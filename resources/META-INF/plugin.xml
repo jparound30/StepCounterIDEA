@@ -1,0 +1,33 @@
+<idea-plugin version="2">
+  <id>com.github.jparound30.idea.plugin.stepcounter</id>
+  <name>Plugin display name here</name>
+  <version>1.0</version>
+  <vendor email="japanese.around30_at_gmail.com" url="http://github.com/jparound30/ideaStepCounter">jparound30</vendor>
+
+  <description><![CDATA[
+      Step counter plugin.<br>
+      This plugin is used stepcounter(https://github.com/takezoe/stepcounter) internally.<br>
+    ]]></description>
+
+  <change-notes><![CDATA[
+      V.0.1.0 - Initial release.<br>
+    ]]>
+  </change-notes>
+
+  <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
+  <idea-version since-build="141.0"/>
+
+  <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
+       on how to target different products -->
+  <depends>com.intellij.modules.lang</depends>
+  <depends>com.intellij.modules.vcs</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <!-- Add your extensions here -->
+  </extensions>
+
+  <actions>
+    <!-- Add your actions here -->
+  </actions>
+
+</idea-plugin>
