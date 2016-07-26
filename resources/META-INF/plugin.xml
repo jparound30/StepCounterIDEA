@@ -30,4 +30,10 @@
     <!-- Add your actions here -->
   </actions>
 
+  <project-components>
+    <component>
+      <implementation-class>com.github.jparound30.idea.plugin.stepcounter.action.StepCounterProjectComponent</implementation-class>
+    </component>
+  </project-components>
+
 </idea-plugin>
