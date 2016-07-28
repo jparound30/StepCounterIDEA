@@ -1,16 +1,21 @@
 <idea-plugin version="2">
   <id>com.github.jparound30.idea.plugin.stepcounter</id>
   <name>Plugin display name here</name>
-  <version>1.0</version>
-  <vendor email="japanese.around30_at_gmail.com" url="http://github.com/jparound30/ideaStepCounter">jparound30</vendor>
+  <version>0.1.000</version>
+  <vendor email="japanese.around30_at_gmail.com" url="https://github.com/jparound30/StepCounterIDEA">jparound30</vendor>
 
   <description><![CDATA[
       Step counter plugin.<br>
       This plugin is used stepcounter(https://github.com/takezoe/stepcounter) internally.<br>
+      <br>
+      Limitations.<br>
+      1. Run only MacOS X currently.
+      2. Project must be Enabled VCS Integration(Git)
+      3. git command path must be /usr/bin/git
     ]]></description>
 
   <change-notes><![CDATA[
-      V.0.1.0 - Initial release.<br>
+      V.0.1.000 - Initial release.<br>
     ]]>
   </change-notes>
 
@@ -32,7 +37,7 @@
 
   <project-components>
     <component>
-      <implementation-class>com.github.jparound30.idea.plugin.stepcounter.action.StepCounterProjectComponent</implementation-class>
+      <implementation-class>com.github.jparound30.idea.plugin.stepcounter.StepCounterProjectComponent</implementation-class>
     </component>
   </project-components>
 

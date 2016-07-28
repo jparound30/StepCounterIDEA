@@ -1,13 +1,15 @@
-package com.github.jparound30.idea.plugin.stepcounter.action
+package com.github.jparound30.idea.plugin.stepcounter
 
+import com.github.jparound30.idea.plugin.stepcounter.action.StepCountAction
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.Constraints
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.components.ProjectComponent
+import com.intellij.openapi.vcs.ex.ProjectLevelVcsManagerEx
 
 /**
- * Created by tabukinobuhiro on 2016/07/25.
+ * @author jparound30.
  */
 class StepCounterProjectComponent : ProjectComponent {
     companion object {
@@ -32,15 +34,17 @@ class StepCounterProjectComponent : ProjectComponent {
         val action = StepCountAction()
 
         if (am.getAction("StepCount.StepCount") == null) {
-            // Passes an instance of your custom TextBoxes class to the registerAction method of the ActionManager class.
-            am.registerAction("StepCount.StepCount", action)
-
             // Gets an instance of the WindowMenu action group.
-            val VcsLogContextMenu = am.getAction("Vcs.Log.ContextMenu") as DefaultActionGroup
+            val vcsLogContextMenu = am.getAction("Vcs.Log.ContextMenu") as DefaultActionGroup
 
-            // Adds a separator and a new menu command to the WindowMenu group on the main menu.
-            VcsLogContextMenu.add(Separator.getInstance(), Constraints.FIRST)
-            VcsLogContextMenu.add(action, Constraints.FIRST)
+            if (vcsLogContextMenu != null) {
+                // Passes an instance of your custom TextBoxes class to the registerAction method of the ActionManager class.
+                am.registerAction("StepCount.StepCount", action)
+
+                // Adds a separator and a new menu command to the WindowMenu group on the main menu.
+                vcsLogContextMenu.add(Separator.getInstance(), Constraints.FIRST)
+                vcsLogContextMenu.add(action, Constraints.FIRST)
+            }
         }
     }
 

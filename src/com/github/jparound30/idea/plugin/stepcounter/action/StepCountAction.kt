@@ -1,40 +1,52 @@
 package com.github.jparound30.idea.plugin.stepcounter.action
 
-import com.intellij.dvcs.repo.VcsRepositoryManager
 import com.intellij.execution.process.BaseOSProcessHandler
 import com.intellij.execution.process.ProcessAdapter
 import com.intellij.execution.process.ProcessEvent
-import com.intellij.execution.process.ProcessOutput
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataKeys
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.io.FileUtil
-import com.intellij.openapi.vcs.*
+import com.intellij.openapi.vcs.ProjectLevelVcsManager
+import com.intellij.openapi.vcs.VcsDataKeys
 import com.intellij.openapi.vcs.history.VcsRevisionNumber
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.util.containers.HashMap
-import com.intellij.vcsUtil.VcsImplUtil
-import com.intellij.vcsUtil.VcsUtil
+import com.intellij.ui.components.JBScrollPane
+import com.intellij.ui.table.JBTable
 import jp.sf.amateras.stepcounter.diffcount.DiffCounter
 import jp.sf.amateras.stepcounter.diffcount.DiffCounterUtil
 import jp.sf.amateras.stepcounter.diffcount.`object`.DiffFileResult
 import jp.sf.amateras.stepcounter.diffcount.`object`.DiffFolderResult
 import jp.sf.amateras.stepcounter.diffcount.`object`.DiffStatus
+import java.awt.Dimension
 import java.io.File
 import java.io.IOException
+import java.util.*
+import javax.swing.JButton
+import javax.swing.JFrame
+import javax.swing.event.TableModelListener
+import javax.swing.table.TableModel
 
 /**
- * Created by tabukinobuhiro on 2016/07/25.
+ * @author jparound30
  */
 class StepCountAction : AnAction("Step Count") {
     companion object {
         val NORMAL_STEPS = 0
         val DIFF_STEPS   = 1
+
+        val workDirSuffix = ".stepcount"
+        val oldDirStr = "old"
+        val newDirStr = "new"
+
     }
     override fun actionPerformed(e: AnActionEvent?) {
         if (e == null) {
@@ -63,34 +75,64 @@ class StepCountAction : AnAction("Step Count") {
         val vcsRoot = ProjectLevelVcsManager.getInstance(project).getVcsRootFor(projectFileDirectory)
 
 
-        // １つあるいは２つのソースを特定のフォルダにチェックアウト
-        createTemporaryDirectories(vcsRoot!!, commitHashes?.last()!!, commitHashes?.first()!!)
+        ProgressManager.getInstance().run(object : Task.Backgroundable(project, "Counting steps...", false) {
+            override fun run(progressIndicator: ProgressIndicator) {
+                // １つあるいは２つのソースを特定のフォルダにチェックアウト
+                progressIndicator.fraction = 0.10
+                progressIndicator.text = "Checkout revision"
+                this@StepCountAction.createTemporaryDirectories(project, vcsRoot!!, commitHashes?.first()!!, commitHashes?.last()!!)
 
+                // チェックアウトしたフォルダに対して、ステップカウンタを実行
 
-        // チェックアウトしたフォルダに対して、ステップカウンタを実行
-
-        // 2tu
-        val targetPath = vcsRoot!!.path + "/.stepcount/new/"
-        val comparePath = vcsRoot!!.path + "/.stepcount/old/"
-        val results = count(targetPath, comparePath)
-        val diffFileResults = DiffCounterUtil.convertToList(results)
-        for (d in diffFileResults) {
-            when(d.status) {
-                DiffStatus.ADDED, DiffStatus.MODIFIED, DiffStatus.REMOVED -> {
-                    System.out.println("${d.path} / ${d.name} / ${d.fileType} / ${d.addCount} / ${d.delCount} / ${d.status} / Total: ${d.addCount + d.delCount} ")
-                }
-                DiffStatus.NONE -> {
-                    if (d.addCount != 0 || d.delCount != 0) {
-                        System.out.println("${d.path} / ${d.name} / ${d.fileType} / ${d.addCount} / ${d.delCount} / ${d.status} / Total: ${d.addCount + d.delCount} ")
-                    } else {
-                        //System.out.println("[対象外] ${d.path} / ${d.name} / ${d.fileType} / ${d.addCount} / ${d.delCount} / ${d.status} / Total: ${d.addCount + d.delCount} ")
+                progressIndicator.fraction = 0.75
+                progressIndicator.text = "Counting"
+                val targetPath = vcsRoot.path + File.separator + workDirSuffix + File.separator + newDirStr
+                val comparePath = vcsRoot.path + File.separator + workDirSuffix + File.separator + oldDirStr
+                val results = this@StepCountAction.count(targetPath, comparePath)
+                val diffFileResults = DiffCounterUtil.convertToList(results)
+                val filteredDiffFileResults = ArrayList<DiffFileResult>()
+                for (d in diffFileResults) {
+                    when (d.status) {
+                        DiffStatus.ADDED, DiffStatus.MODIFIED, DiffStatus.REMOVED -> {
+                            System.out.println("${d.path} / ${d.name} / ${d.fileType} / ${d.addCount} / ${d.delCount} / ${d.status} / Total: ${d.addCount + d.delCount} ")
+                            filteredDiffFileResults.add(d)
+                        }
+                        DiffStatus.NONE -> {
+                            if (d.addCount != 0 || d.delCount != 0) {
+                                System.out.println("${d.path} / ${d.name} / ${d.fileType} / ${d.addCount} / ${d.delCount} / ${d.status} / Total: ${d.addCount + d.delCount} ")
+                                filteredDiffFileResults.add(d)
+                            } else {
+                                //System.out.println("[対象外] ${d.path} / ${d.name} / ${d.fileType} / ${d.addCount} / ${d.delCount} / ${d.status} / Total: ${d.addCount + d.delCount} ")
+                            }
+                        }
+                        else -> {
+                            //System.out.println("[対象外] ${d.path} / ${d.name} / ${d.fileType} / ${d.addCount} / ${d.delCount} / ${d.status} / Total: ${d.addCount + d.delCount} ")
+                        }
                     }
                 }
-                else -> {
-                    //System.out.println("[対象外] ${d.path} / ${d.name} / ${d.fileType} / ${d.addCount} / ${d.delCount} / ${d.status} / Total: ${d.addCount + d.delCount} ")
+                ApplicationManager.getApplication().invokeLater {
+                    val frame = JFrame("差分ステップ数")
+                    frame.isVisible = true
+                    frame.setSize(1000, 400)
+                    val tableModel = DiffTableMode(filteredDiffFileResults)
+                    val tableView = JBTable(tableModel)
+                    tableView.setShowColumns(true)
+                    tableView.fillsViewportHeight = true
+
+                    val sp = JBScrollPane(tableView)
+                    sp.preferredSize = Dimension(980, 350)
+
+                    frame.contentPane.add(sp)
+
+                    val saveButton = JButton("Save")
+                    val closeButton = JButton("Close")
+                    frame.contentPane.add(closeButton)
+                    frame.contentPane.add(saveButton)
+
+//                    Messages.showMessageDialog(project, "実行完了しました。", "Information", Messages.getInformationIcon())
                 }
             }
-        }
+        })
     }
 
     /**
@@ -108,45 +150,56 @@ class StepCountAction : AnAction("Step Count") {
         return DiffCounter.count(oldRoot, newRoot)
     }
 
-    private fun createTemporaryDirectories(projectRootVfs: VirtualFile,
+    private fun createTemporaryDirectories(project: Project,
+                                           projectRootVfs: VirtualFile,
                                            targetRevisionNumber: VcsRevisionNumber,
                                            compareRevisionNumber: VcsRevisionNumber) {
-        val app = ApplicationManager.getApplication()
+//        val app = ApplicationManager.getApplication()
+//
+//        ProgressManager.getInstance().run(object : Task.Backgroundable(project, "Counting...", false) {
+//            override fun run(progressIndicator: ProgressIndicator) {
+                //        app.runWriteAction {
+                // ソースチェックアウト先を作成
+                var tmpRoot: VirtualFile?
+                tmpRoot = projectRootVfs.findChild(workDirSuffix)
+                if (tmpRoot == null) {
+                    tmpRoot = projectRootVfs.createChildDirectory(this, workDirSuffix)
+                }
 
-        app.runWriteAction {
-            // ソースチェックアウト先を作成
-            var tmpRoot: VirtualFile?
-            tmpRoot = projectRootVfs.findChild(".stepcount")
-            if (tmpRoot == null) {
-                tmpRoot = projectRootVfs.createChildDirectory(this, ".stepcount")
-            }
+                val oldPathStr = tmpRoot.path + File.separator + oldDirStr
+                val newPathStr = tmpRoot.path + File.separator + newDirStr
 
-            val oldPathStr = tmpRoot.path + "/old"
-            val newPathStr = tmpRoot.path + "/new"
+                // すでにold/newがある場合は削除してcloneしなおす
+                val oldPathFile = File(oldPathStr)
+                if (oldPathFile.exists()) {
+                    FileUtil.delete(oldPathFile)
+                }
+                val newPathFile = File(newPathStr)
+                if (newPathFile.exists()) {
+                    FileUtil.delete(newPathFile)
+                }
 
-            // すでにold/newがある場合は削除してcloneしなおす
-            val oldPathFile = File(oldPathStr)
-            if (oldPathFile.exists()) {
-                FileUtil.delete(oldPathFile)
-            }
-            val newPathFile = File(newPathStr)
-            if (newPathFile.exists()) {
-                FileUtil.delete(newPathFile)
-            }
+//                progressIndicator.fraction = 0.3
 
-            val originalRepository = projectRootVfs.findChild(".git")!!.path
-            // 比較もとをclone
-            clone(originalRepository, oldPathStr)
-            checkoutSource(oldPathStr, compareRevisionNumber)
+                val originalRepository = projectRootVfs.findChild(".git")!!.path
 
-            //
-            clone(originalRepository, newPathStr)
-            checkoutSource(newPathStr, targetRevisionNumber)
-        }
+//                progressIndicator.fraction = 0.6
+                // 比較もとをclone
+                clone(originalRepository, oldPathStr)
+                checkoutSource(oldPathStr, compareRevisionNumber)
+
+                //
+                clone(originalRepository, newPathStr)
+                checkoutSource(newPathStr, targetRevisionNumber)
+
+//                progressIndicator.fraction = 1.0
+//                progressIndicator.text = "finished"
+//            }
+//        })
 
     }
 
-    fun clone(originalRepository: String, destinationPath: String): String {
+    private fun clone(originalRepository: String, destinationPath: String): String {
         val processBuilder = ProcessBuilder(
                 "/usr/bin/git", "clone", originalRepository, destinationPath)
 
@@ -165,7 +218,7 @@ class StepCountAction : AnAction("Step Count") {
         })
         handler.startNotify()
         handler.waitFor()
-        System.out.println(builder.toString())
+//        System.out.println(builder.toString())
         System.out.println(handler.process.exitValue())
         return builder.toString()
     }
@@ -189,9 +242,62 @@ class StepCountAction : AnAction("Step Count") {
         })
         handler.startNotify()
         handler.waitFor()
-        System.out.println(builder.toString())
+//        System.out.println(builder.toString())
         System.out.println(handler.process.exitValue())
         return builder.toString()
     }
 
+    class DiffTableMode(val diffFileResult: List<DiffFileResult>) : TableModel {
+        companion object {
+            val columnNames = arrayOf(
+                    "パス",
+                    "追加 [Line]",
+                    "削除 [Line]",
+                    "追加+削除 [Line]"
+            )
+        }
+        override fun getRowCount(): Int {
+            return diffFileResult.size
+        }
+
+        override fun getColumnClass(columnIndex: Int): Class<*> {
+            return String::class.java
+        }
+
+        override fun addTableModelListener(l: TableModelListener?) {
+            //
+        }
+
+        override fun getColumnName(columnIndex: Int): String {
+            return  columnNames[columnIndex]
+        }
+
+        override fun isCellEditable(rowIndex: Int, columnIndex: Int): Boolean {
+            return false
+        }
+
+        override fun setValueAt(aValue: Any?, rowIndex: Int, columnIndex: Int) {
+            //
+        }
+
+        override fun getColumnCount(): Int {
+            return 4
+        }
+
+        override fun getValueAt(rowIndex: Int, columnIndex: Int): Any {
+            val t = diffFileResult[rowIndex]
+            return when(columnIndex) {
+                0 -> t.path
+                1 -> t.addCount
+                2 -> t.delCount
+                3 -> t.addCount + t.delCount
+                else -> throw IllegalArgumentException("columnIndex = $columnIndex")
+            }
+        }
+
+        override fun removeTableModelListener(l: TableModelListener?) {
+            //
+        }
+
+    }
 }
