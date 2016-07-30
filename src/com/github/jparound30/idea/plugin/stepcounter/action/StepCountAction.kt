@@ -1,5 +1,6 @@
 package com.github.jparound30.idea.plugin.stepcounter.action
 
+import com.github.jparound30.idea.plugin.stepcounter.ui.StepDiffView
 import com.intellij.execution.process.BaseOSProcessHandler
 import com.intellij.execution.process.ProcessAdapter
 import com.intellij.execution.process.ProcessEvent
@@ -107,29 +108,21 @@ class StepCountAction : AnAction("Step Count") {
                         }
                         else -> {
                             //System.out.println("[対象外] ${d.path} / ${d.name} / ${d.fileType} / ${d.addCount} / ${d.delCount} / ${d.status} / Total: ${d.addCount + d.delCount} ")
+                            filteredDiffFileResults.add(d)
                         }
                     }
                 }
-                ApplicationManager.getApplication().invokeLater {
-                    val frame = JFrame("差分ステップ数")
-                    frame.isVisible = true
-                    frame.setSize(1000, 400)
-                    val tableModel = DiffTableMode(filteredDiffFileResults)
-                    val tableView = JBTable(tableModel)
-                    tableView.setShowColumns(true)
-                    tableView.fillsViewportHeight = true
+                if (filteredDiffFileResults.size != 0) {
+                    ApplicationManager.getApplication().invokeLater {
+                        val frame = JFrame("StepDiffView")
+                        frame.isVisible = true
+                        frame.setSize(1000, 400)
 
-                    val sp = JBScrollPane(tableView)
-                    sp.preferredSize = Dimension(980, 350)
-
-                    frame.contentPane.add(sp)
-
-                    val saveButton = JButton("Save")
-                    val closeButton = JButton("Close")
-                    frame.contentPane.add(closeButton)
-                    frame.contentPane.add(saveButton)
-
-//                    Messages.showMessageDialog(project, "実行完了しました。", "Information", Messages.getInformationIcon())
+                        val rootComponent = StepDiffView(filteredDiffFileResults)
+                        frame.contentPane.add(rootComponent.`$$$getRootComponent$$$`())
+                    }
+                } else {
+                    Messages.showMessageDialog(project, "差分はありません。", "Information", Messages.getInformationIcon())
                 }
             }
         })
