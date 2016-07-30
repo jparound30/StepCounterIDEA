@@ -4,35 +4,35 @@ import com.github.jparound30.idea.plugin.stepcounter.ui.StepDiffView
 import com.intellij.execution.process.BaseOSProcessHandler
 import com.intellij.execution.process.ProcessAdapter
 import com.intellij.execution.process.ProcessEvent
+import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataKeys
+import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vcs.VcsDataKeys
 import com.intellij.openapi.vcs.history.VcsRevisionNumber
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.ui.components.JBScrollPane
-import com.intellij.ui.table.JBTable
+import com.intellij.ui.awt.RelativePoint
 import jp.sf.amateras.stepcounter.diffcount.DiffCounter
 import jp.sf.amateras.stepcounter.diffcount.DiffCounterUtil
 import jp.sf.amateras.stepcounter.diffcount.`object`.DiffFileResult
 import jp.sf.amateras.stepcounter.diffcount.`object`.DiffFolderResult
 import jp.sf.amateras.stepcounter.diffcount.`object`.DiffStatus
-import java.awt.Dimension
+import java.awt.event.MouseEvent
 import java.io.File
 import java.io.IOException
 import java.util.*
-import javax.swing.JButton
-import javax.swing.JFrame
 import javax.swing.event.TableModelListener
 import javax.swing.table.TableModel
 
@@ -84,7 +84,6 @@ class StepCountAction : AnAction("Step Count") {
                 this@StepCountAction.createTemporaryDirectories(project, vcsRoot!!, commitHashes?.first()!!, commitHashes?.last()!!)
 
                 // チェックアウトしたフォルダに対して、ステップカウンタを実行
-
                 progressIndicator.fraction = 0.75
                 progressIndicator.text = "Counting"
                 val targetPath = vcsRoot.path + File.separator + workDirSuffix + File.separator + newDirStr
@@ -114,12 +113,32 @@ class StepCountAction : AnAction("Step Count") {
                 }
                 if (filteredDiffFileResults.size != 0) {
                     ApplicationManager.getApplication().invokeLater {
-                        val frame = JFrame("StepDiffView")
-                        frame.isVisible = true
-                        frame.setSize(1000, 400)
+
+                        val dataContext = SimpleDataContext.getProjectContext(project)
 
                         val rootComponent = StepDiffView(filteredDiffFileResults)
-                        frame.contentPane.add(rootComponent.`$$$getRootComponent$$$`())
+
+                        val popupBuilder = JBPopupFactory.getInstance().createComponentPopupBuilder(rootComponent.`$$$getRootComponent$$$`(), null)
+                        popupBuilder.setMovable(true)
+                        popupBuilder.setShowBorder(true)
+                        popupBuilder.setTitle("StepDiffView")
+                        popupBuilder.setResizable(true)
+                        popupBuilder.setFocusable(true)
+                        val popup = popupBuilder.createPopup()
+                        if (e.inputEvent is MouseEvent) {
+                            if (e.place != ActionPlaces.UPDATE_POPUP) {
+                                popup.show(RelativePoint(e.inputEvent as MouseEvent))
+                            } else {
+                                popup.showInBestPositionFor(dataContext)
+                            }
+                        } else {
+                            popup.showInBestPositionFor(dataContext)
+                        }
+                        rootComponent.addOnCancelClickListener {
+                            System.out.println("onCancel")
+                            popup.cancel()
+                        }
+                        rootComponent.addOnSaveClickListener { System.out.println("onSave") }
                     }
                 } else {
                     Messages.showMessageDialog(project, "差分はありません。", "Information", Messages.getInformationIcon())
@@ -147,48 +166,38 @@ class StepCountAction : AnAction("Step Count") {
                                            projectRootVfs: VirtualFile,
                                            targetRevisionNumber: VcsRevisionNumber,
                                            compareRevisionNumber: VcsRevisionNumber) {
-//        val app = ApplicationManager.getApplication()
-//
-//        ProgressManager.getInstance().run(object : Task.Backgroundable(project, "Counting...", false) {
-//            override fun run(progressIndicator: ProgressIndicator) {
-                //        app.runWriteAction {
-                // ソースチェックアウト先を作成
-                var tmpRoot: VirtualFile?
-                tmpRoot = projectRootVfs.findChild(workDirSuffix)
-                if (tmpRoot == null) {
-                    tmpRoot = projectRootVfs.createChildDirectory(this, workDirSuffix)
-                }
+        // ソースチェックアウト先を作成
+        var tmpRoot: VirtualFile?
+        tmpRoot = projectRootVfs.findChild(workDirSuffix)
+        if (tmpRoot == null) {
+            tmpRoot = projectRootVfs.createChildDirectory(this, workDirSuffix)
+        }
 
-                val oldPathStr = tmpRoot.path + File.separator + oldDirStr
-                val newPathStr = tmpRoot.path + File.separator + newDirStr
+        val oldPathStr = tmpRoot.path + File.separator + oldDirStr
+        val newPathStr = tmpRoot.path + File.separator + newDirStr
 
-                // すでにold/newがある場合は削除してcloneしなおす
-                val oldPathFile = File(oldPathStr)
-                if (oldPathFile.exists()) {
-                    FileUtil.delete(oldPathFile)
-                }
-                val newPathFile = File(newPathStr)
-                if (newPathFile.exists()) {
-                    FileUtil.delete(newPathFile)
-                }
+        // すでにold/newがある場合は削除してcloneしなおす
+        val oldPathFile = File(oldPathStr)
+        if (oldPathFile.exists()) {
+            FileUtil.delete(oldPathFile)
+        }
+        val newPathFile = File(newPathStr)
+        if (newPathFile.exists()) {
+            FileUtil.delete(newPathFile)
+        }
 
 //                progressIndicator.fraction = 0.3
 
-                val originalRepository = projectRootVfs.findChild(".git")!!.path
+        val originalRepository = projectRootVfs.findChild(".git")!!.path
 
 //                progressIndicator.fraction = 0.6
-                // 比較もとをclone
-                clone(originalRepository, oldPathStr)
-                checkoutSource(oldPathStr, compareRevisionNumber)
+        // 比較もとをclone
+        clone(originalRepository, oldPathStr)
+        checkoutSource(oldPathStr, compareRevisionNumber)
 
-                //
-                clone(originalRepository, newPathStr)
-                checkoutSource(newPathStr, targetRevisionNumber)
-
-//                progressIndicator.fraction = 1.0
-//                progressIndicator.text = "finished"
-//            }
-//        })
+        //
+        clone(originalRepository, newPathStr)
+        checkoutSource(newPathStr, targetRevisionNumber)
 
     }
 

@@ -9,6 +9,7 @@ import jp.sf.amateras.stepcounter.diffcount.object.DiffFileResult;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionListener;
 
 /**
  * @author jparound30
@@ -19,10 +20,22 @@ public class StepDiffView {
     private JButton Save;
     private JPanel rootPanel;
 
+    private StepCountAction.DiffTableMode tableModel;
+
     public StepDiffView(java.util.List<DiffFileResult> data) {
         $$$setupUI$$$();
-        StepCountAction.DiffTableMode tableModel = new StepCountAction.DiffTableMode(data);
+        tableModel = new StepCountAction.DiffTableMode(data);
         tableView.setModel(tableModel);
+        tableView.getColumnModel().getColumn(1).setMaxWidth(75);
+        tableView.getColumnModel().getColumn(2).setMaxWidth(75);
+        tableView.getColumnModel().getColumn(3).setMaxWidth(150);
+    }
+
+    public void addOnSaveClickListener(ActionListener listener) {
+        Save.addActionListener(listener);
+    }
+    public void addOnCancelClickListener(ActionListener listener) {
+        Cancel.addActionListener(listener);
     }
 
     private void createUIComponents() {
