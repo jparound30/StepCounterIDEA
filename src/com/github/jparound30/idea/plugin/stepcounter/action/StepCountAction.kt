@@ -4,11 +4,7 @@ import com.github.jparound30.idea.plugin.stepcounter.ui.StepDiffView
 import com.intellij.execution.process.BaseOSProcessHandler
 import com.intellij.execution.process.ProcessAdapter
 import com.intellij.execution.process.ProcessEvent
-import com.intellij.openapi.actionSystem.ActionPlaces
-import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.actionSystem.DataKeys
+import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
@@ -16,6 +12,8 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.ui.WindowWrapper
+import com.intellij.openapi.ui.WindowWrapperBuilder
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.io.FileUtil
@@ -29,9 +27,13 @@ import jp.sf.amateras.stepcounter.diffcount.DiffCounterUtil
 import jp.sf.amateras.stepcounter.diffcount.`object`.DiffFileResult
 import jp.sf.amateras.stepcounter.diffcount.`object`.DiffFolderResult
 import jp.sf.amateras.stepcounter.diffcount.`object`.DiffStatus
+import java.awt.event.ActionEvent
+import java.awt.event.ActionListener
 import java.awt.event.MouseEvent
 import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.charset.Charset
 import java.util.*
 import javax.swing.event.TableModelListener
 import javax.swing.table.TableModel
@@ -81,6 +83,8 @@ class StepCountAction : AnAction("Step Count") {
                 // １つあるいは２つのソースを特定のフォルダにチェックアウト
                 progressIndicator.fraction = 0.10
                 progressIndicator.text = "Checkout revision"
+                val targetRevision = commitHashes?.first()
+                val compareRevision = commitHashes?.last()
                 this@StepCountAction.createTemporaryDirectories(project, vcsRoot!!, commitHashes?.first()!!, commitHashes?.last()!!)
 
                 // チェックアウトしたフォルダに対して、ステップカウンタを実行
@@ -107,7 +111,7 @@ class StepCountAction : AnAction("Step Count") {
                         }
                         else -> {
                             //System.out.println("[対象外] ${d.path} / ${d.name} / ${d.fileType} / ${d.addCount} / ${d.delCount} / ${d.status} / Total: ${d.addCount + d.delCount} ")
-                            filteredDiffFileResults.add(d)
+                            //filteredDiffFileResults.add(d)
                         }
                     }
                 }
@@ -118,27 +122,51 @@ class StepCountAction : AnAction("Step Count") {
 
                         val rootComponent = StepDiffView(filteredDiffFileResults)
 
-                        val popupBuilder = JBPopupFactory.getInstance().createComponentPopupBuilder(rootComponent.`$$$getRootComponent$$$`(), null)
-                        popupBuilder.setMovable(true)
-                        popupBuilder.setShowBorder(true)
-                        popupBuilder.setTitle("StepDiffView")
-                        popupBuilder.setResizable(true)
-                        popupBuilder.setFocusable(true)
-                        val popup = popupBuilder.createPopup()
-                        if (e.inputEvent is MouseEvent) {
-                            if (e.place != ActionPlaces.UPDATE_POPUP) {
-                                popup.show(RelativePoint(e.inputEvent as MouseEvent))
-                            } else {
-                                popup.showInBestPositionFor(dataContext)
-                            }
-                        } else {
-                            popup.showInBestPositionFor(dataContext)
-                        }
-                        rootComponent.addOnCancelClickListener {
-                            System.out.println("onCancel")
-                            popup.cancel()
-                        }
-                        rootComponent.addOnSaveClickListener { System.out.println("onSave") }
+                        val windowWrapperBuilder = WindowWrapperBuilder(WindowWrapper.Mode.FRAME, rootComponent.`$$$getRootComponent$$$`())
+                        windowWrapperBuilder.setTitle("StepDiffView")
+                        windowWrapperBuilder.setProject(project)
+                        val windowWrapper = windowWrapperBuilder.build()
+                        windowWrapper.show()
+                        windowWrapperBuilder.setPreferredFocusedComponent(rootComponent.`$$$getRootComponent$$$`())
+
+//                        val popupBuilder = JBPopupFactory.getInstance().createComponentPopupBuilder(rootComponent.`$$$getRootComponent$$$`(), null)
+//                        popupBuilder.setMovable(true)
+//                        popupBuilder.setShowBorder(true)
+//                        popupBuilder.setTitle("StepDiffView")
+//                        popupBuilder.setResizable(true)
+//                        popupBuilder.setFocusable(true)
+//                        val popup = popupBuilder.createPopup()
+//                        if (e.inputEvent is MouseEvent) {
+//                            if (e.place != ActionPlaces.UPDATE_POPUP) {
+//                                popup.show(RelativePoint(e.inputEvent as MouseEvent))
+//                            } else {
+//                                popup.showInBestPositionFor(dataContext)
+//                            }
+//                        } else {
+//                            popup.showInBestPositionFor(dataContext)
+//                        }
+                        rootComponent.setCancelListener(
+                                ActionListener {
+                                    System.out.println("onCancel")
+                                    windowWrapper.close()
+                                })
+                        rootComponent.setOkListener(
+                                ActionListener {
+                                    System.out.println("onSave")
+                                    val file = File(vcsRoot.path + File.separator + workDirSuffix + File.separator + "result_${compareRevision?.asString()}_${targetRevision?.asString()}.csv")
+                                    val fileOutputStream = FileOutputStream(file)
+                                    val writer = fileOutputStream.writer(Charset.forName("UTF-8"))
+                                    val header = "path,name,fileType,d.status,addCount,delCount,total\n"
+                                    writer.write(header)
+                                    filteredDiffFileResults.forEach { d ->
+                                        val csvRow = "${d.path},${d.name},${d.fileType},${d.status},${d.addCount},${d.delCount},${d.addCount + d.delCount}\n"
+                                        writer.write(csvRow)
+                                    }
+                                    writer.flush()
+                                    writer.close()
+                                    fileOutputStream.close()
+                                }
+                        )
                     }
                 } else {
                     Messages.showMessageDialog(project, "差分はありません。", "Information", Messages.getInformationIcon())
@@ -283,7 +311,7 @@ class StepCountAction : AnAction("Step Count") {
         }
 
         override fun getColumnCount(): Int {
-            return 4
+            return columnNames.size
         }
 
         override fun getValueAt(rowIndex: Int, columnIndex: Int): Any {
