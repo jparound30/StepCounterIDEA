@@ -1,4 +1,6 @@
 buildscript {
+    ext.kotlin_version = '1.1.2-2'
+
     repositories {
         mavenCentral()
         maven {
@@ -7,7 +9,9 @@ buildscript {
         maven {
             url 'http://dl.bintray.com/jetbrains/intellij-plugin-service'
         }
-
+        flatDir {
+            dirs 'lib'
+        }
     }
     dependencies {
         classpath "gradle.plugin.org.jetbrains:gradle-intellij-plugin:0.1.10"
@@ -24,6 +28,8 @@ apply plugin: 'org.jetbrains.intellij'
 apply plugin: 'java'
 apply plugin: 'kotlin'
 
+sourceCompatibility = 1.8
+
 intellij {
     version 'IC-2017.1' //IntelliJ IDEA 2016.3 dependency; for a full list of IntelliJ IDEA releases please see https://www.jetbrains.com/intellij-repository/releases
     plugins 'coverage' //Bundled plugin dependencies
@@ -35,4 +41,13 @@ version '0.1' // Plugin version
 
 repositories {
     mavenCentral()
+    flatDir {
+        dirs 'lib'
+    }
+}
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile name: 'stepcounter-3.0.4-SNAPSHOT-jar-with-dependencies'
 }

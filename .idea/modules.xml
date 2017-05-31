@@ -2,7 +2,9 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/stepcounter.iml" filepath="$PROJECT_DIR$/stepcounter.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/StepCounterIDEA.iml" filepath="$PROJECT_DIR$/.idea/modules/StepCounterIDEA.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/StepCounterIDEA_main.iml" filepath="$PROJECT_DIR$/.idea/modules/StepCounterIDEA_main.iml" group="StepCounterIDEA" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/StepCounterIDEA_test.iml" filepath="$PROJECT_DIR$/.idea/modules/StepCounterIDEA_test.iml" group="StepCounterIDEA" />
     </modules>
   </component>
 </project>
