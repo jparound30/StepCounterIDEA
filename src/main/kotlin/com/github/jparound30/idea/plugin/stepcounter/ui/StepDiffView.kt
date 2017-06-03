@@ -16,12 +16,12 @@ import java.awt.event.ActionListener
  */
 class StepDiffView(data: List<DiffFileResult>) {
     private var tableView: JBTable? = null
-    private var Cancel: JButton? = null
-    private var Save: JButton? = null
+    private var btnCancel: JButton
+    private var btnSave: JButton
     var rootPanel: JComponent? = null
         private set
 
-    private val tableModel: StepCountAction.DiffTableMode
+    private val tableModel: StepCountAction.DiffTableMode = StepCountAction.DiffTableMode(data)
 
     private var _cancelListener: ActionListener? = null
     fun setCancelListener(listener: ActionListener)
@@ -35,19 +35,18 @@ class StepDiffView(data: List<DiffFileResult>) {
         }
     }
 
-    private var _okListener: ActionListener? = null
-    fun setOkListener(listener: ActionListener) {
-        _okListener = listener
+    private var _saveListener: ActionListener? = null
+    fun setSaveListener(listener: ActionListener) {
+        _saveListener = listener
     }
 
-    private fun ok(event: ActionEvent) {
-        if (_okListener != null) {
-            _okListener!!.actionPerformed(event)
+    private fun save(event: ActionEvent) {
+        if (_saveListener != null) {
+            _saveListener!!.actionPerformed(event)
         }
     }
 
     init {
-        tableModel = StepCountAction.DiffTableMode(data)
         tableView = JBTable()
 
         tableView!!.model = tableModel
@@ -60,11 +59,11 @@ class StepDiffView(data: List<DiffFileResult>) {
         scroll.add(tableView)
         scroll.setViewportView(tableView)
 
-        val btnCancel = JButton("Cancel")
+        btnCancel = JButton("Cancel")
         btnCancel.addActionListener { event -> cancel(event)}
 
-        val btnOk = JButton("OK")
-        btnOk.addActionListener { event -> ok(event) }
+        btnSave = JButton("Save")
+        btnSave.addActionListener { event -> save(event) }
 
         rootPanel = panel {
             row {
@@ -72,12 +71,8 @@ class StepDiffView(data: List<DiffFileResult>) {
             }
             row {
                 btnCancel()
-                btnOk()
+                btnSave()
             }
         }
-    }
-
-    private fun createUIComponents() {
-        // TODO: place custom component creation code here
     }
 }

@@ -136,7 +136,7 @@ class StepCountAction : AnAction("Step Count!") {
                                     System.out.println("onCancel")
                                     windowWrapper.close()
                                 })
-                        rootComponent.setOkListener(
+                        rootComponent.setSaveListener(
                                 ActionListener {
                                     System.out.println("onSave")
                                     val file = File(vcsRoot.path + File.separator + workDirSuffix + File.separator + "result_${compareRevision?.asString()}_${targetRevision?.asString()}.csv")
