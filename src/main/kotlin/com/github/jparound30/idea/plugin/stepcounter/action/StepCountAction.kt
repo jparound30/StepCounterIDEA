@@ -41,7 +41,7 @@ import javax.swing.table.TableModel
 /**
  * @author jparound30
  */
-class StepCountAction : AnAction("Step Count") {
+class StepCountAction : AnAction("Step Count!") {
     companion object {
         val NORMAL_STEPS = 0
         val DIFF_STEPS   = 1
@@ -122,29 +122,15 @@ class StepCountAction : AnAction("Step Count") {
 
                         val rootComponent = StepDiffView(filteredDiffFileResults)
 
-                        val windowWrapperBuilder = WindowWrapperBuilder(WindowWrapper.Mode.FRAME, rootComponent.`$$$getRootComponent$$$`())
-                        windowWrapperBuilder.setTitle("StepDiffView")
-                        windowWrapperBuilder.setProject(project)
-                        val windowWrapper = windowWrapperBuilder.build()
+                        val windowWrapperBuilder = WindowWrapperBuilder(WindowWrapper.Mode.FRAME, rootComponent.rootPanel!!)
+                        val windowWrapper = windowWrapperBuilder
+                                .setTitle("Step Count")
+                                .setProject(project)
+                                .setPreferredFocusedComponent(rootComponent.rootPanel)
+                                .setDimensionServiceKey(StepCountAction::class.java.name)
+                                .build()
                         windowWrapper.show()
-                        windowWrapperBuilder.setPreferredFocusedComponent(rootComponent.`$$$getRootComponent$$$`())
 
-//                        val popupBuilder = JBPopupFactory.getInstance().createComponentPopupBuilder(rootComponent.`$$$getRootComponent$$$`(), null)
-//                        popupBuilder.setMovable(true)
-//                        popupBuilder.setShowBorder(true)
-//                        popupBuilder.setTitle("StepDiffView")
-//                        popupBuilder.setResizable(true)
-//                        popupBuilder.setFocusable(true)
-//                        val popup = popupBuilder.createPopup()
-//                        if (e.inputEvent is MouseEvent) {
-//                            if (e.place != ActionPlaces.UPDATE_POPUP) {
-//                                popup.show(RelativePoint(e.inputEvent as MouseEvent))
-//                            } else {
-//                                popup.showInBestPositionFor(dataContext)
-//                            }
-//                        } else {
-//                            popup.showInBestPositionFor(dataContext)
-//                        }
                         rootComponent.setCancelListener(
                                 ActionListener {
                                     System.out.println("onCancel")
@@ -280,10 +266,10 @@ class StepCountAction : AnAction("Step Count") {
     class DiffTableMode(val diffFileResult: List<DiffFileResult>) : TableModel {
         companion object {
             val columnNames = arrayOf(
-                    "パス",
-                    "追加 [Line]",
-                    "削除 [Line]",
-                    "追加+削除 [Line]"
+                    "Path",
+                    "Add",
+                    "Del",
+                    "Add + Del"
             )
         }
         override fun getRowCount(): Int {

@@ -12,6 +12,8 @@
       <entry name="!?*.clj" />
     </wildcardResourcePatterns>
     <bytecodeTargetLevel>
+      <module name="stepcounter_main" target="1.8" />
+      <module name="stepcounter_test" target="1.8" />
       <module name="StepCounterIDEA_main" target="1.8" />
       <module name="StepCounterIDEA_test" target="1.8" />
     </bytecodeTargetLevel>
